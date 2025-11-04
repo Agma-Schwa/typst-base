@@ -283,10 +283,75 @@
 }
 
 // ============================================================================
-//  Index Entries
+//  Index
 // ============================================================================
 #let indexentry(..x) = [#metadata((..x.pos()))<__index-entry>]
 #let index(..x) = [#x.pos().map(str).join(" ")#indexentry(..x.pos())]
+#let makeindex() = {
+    set page(columns: 1)
+    cleardoublepage()
+    place(top + left, scope: "parent", float: true, heading(numbering: none)[Index])
+    let sel = selector(<index-entry>)
+    context {
+        let pages_key = str("\u{1}")
+        let query_res = query(sel)
+        let entries = query_res.fold((:), (dict, entry) => {
+            let append(dict, first, ..rest) = { // God I hate pure functional programming...
+                if (rest.pos().len() == 0) {
+                    let node = dict.at(first, default: (:))
+                    let arr = node.at(pages_key, default: ())
+                    arr.push(entry.location().page())
+                    node.insert(pages_key, arr)
+                    dict.insert(first, node)
+                    dict
+                } else {
+                    let node = dict.at(first, default: (:))
+                    dict.insert(first, append(node, rest.pos().at(0), ..rest.pos().slice(1)))
+                    dict
+                }
+            }
+
+            append(dict, entry.value.at(0), ..entry.value.slice(1))
+        })
+
+        let format-int-ranges(ints) = {
+            let format-range(start, end) = {
+                if start == end [#start]
+                else [#start–#end]
+            }
+
+            let entries = ()
+            let start = ints.at(0)
+            let end = ints.at(0)
+            for i in ints.slice(1).dedup() {
+                if end == i - 1 { end = i }
+                else {
+                    entries.push(format-range(start, end))
+                    start = i
+                    end = i
+                }
+            }
+
+            entries.push(format-range(start, end))
+            entries.join(", ")
+        }
+
+        let format-tree(tree, level) = {
+            set list(marker: none, body-indent: 0pt, indent: 2em * level)
+            for (k, v) in tree {
+                let pages = v.remove(pages_key)
+                list.item([
+                    #k
+                    #if pages != none [#en #format-int-ranges(pages)]
+                    #format-tree(v, level + 1)
+                ])
+            }
+        }
+
+        set par(first-line-indent: 0pt, hanging-indent: 2em)
+        format-tree(entries, 0)
+    }
+}
 
 // ============================================================================
 //  Figures, Tables, etc.
