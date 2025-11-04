@@ -213,7 +213,7 @@
         )
     }
 
-    context if gloss-show-numbers.get() {
+    context if __gloss-show-numbers.get() {
         grid(columns:2, [(#__gloss-counter.at(loc).first())#en], the-gloss)
     } else {
         the-gloss
@@ -221,7 +221,7 @@
 }
 
 #let gloss(separator: " ", lbl: none, x) = {
-    context if gloss-show-numbers.get() {
+    context if __gloss-show-numbers.get() {
         counter.step(__gloss-counter)
     }
 
@@ -285,13 +285,13 @@
 // ============================================================================
 //  Index
 // ============================================================================
-#let indexentry(..x) = [#metadata((..x.pos()))<__index-entry>]
+#let indexentry(..x) = [#metadata((..x.pos()))<__index-entry__>]
 #let index(..x) = [#x.pos().map(str).join(" ")#indexentry(..x.pos())]
 #let makeindex() = {
     set page(columns: 1)
     cleardoublepage()
     place(top + left, scope: "parent", float: true, heading(numbering: none)[Index])
-    let sel = selector(<index-entry>)
+    let sel = selector(<__index-entry__>)
     context {
         let pages_key = str("\u{1}")
         let query_res = query(sel)
@@ -383,7 +383,12 @@
 // ============================================================================
 //  Show and set rules.
 // ============================================================================
-#let setup(content) = {
+#let setup(
+    content,
+
+    // [REDACTED] needs to set a custom chapter size.
+    chapter-size: chapter-size
+) = {
     // Page etc.
     set page(
         "a4",
