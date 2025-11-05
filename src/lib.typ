@@ -16,6 +16,17 @@
 #let chapter-size = 30pt
 #let list-sep = $diamond.stroked.small$
 
+// These values were calibrated for the current font by checking how many
+// lines LaTeX can fit on a page using the same font and page size and then
+// adjusting these until Typst can fit the same number of lines; this is
+// because there is no good one-to-one mapping (that I know of) between how
+// these values are specified in LaTeX and Typst. These values are probably
+// font-dependent (at least the default line height usually is) and may
+// require recalibration whenever the font is changed.
+#let par-first-line-indent = 1.5em
+#let par-spacing = .56em
+#let par-leading = .56em
+
 #let small(x) = text(small-size, [#x])
 #let nf(x) = text(normalfont-size, weight: "regular", style: "normal", [#x])
 #let large(x) = text(large-size, [#x])
@@ -24,12 +35,13 @@
 #let cell = table.cell
 #let remove-whitespace-before() = h(0pt, weak: true)
 #let s = smallcaps
+#let b = strong
 #let llap(x) = box(width: 0pt, [#h(-100cm)#h(1fr)#x])
 #let rlap(x) = box(width: 0pt, [#x#h(1fr)#h(-100cm)])
 #let vline = table.vline()
 #let hline = table.hline()
-#let vlineat(x) = table.vline(x: x)
-#let hlineat(y) = table.hline(y: y)
+#let vlineat(x, ..rest) = table.vline(x: x, ..rest)
+#let hlineat(y, ..rest) = table.hline(y: y, ..rest)
 #let vlinesat(..x) = x.pos().map(vlineat)
 #let hlinesat(..y) = y.pos().map(hlineat)
 #let cc(x) = align(center + horizon)[#x]
@@ -382,6 +394,11 @@
 // ============================================================================
 //  Figures, Tables, etc.
 // ============================================================================
+#let italic-table-body(cols: (0,), rows: (0,), it) = {
+    show table.cell: it => if (it.x in cols or it.y in rows) { it } else { emph(it) }
+    it
+}
+
 #let center-table(..content, size: normalfont-size, caption: [Caption], stroke: none) = figure(
     caption: caption,
     text(size: size, rowtable(stroke: stroke, ..content))
@@ -427,17 +444,9 @@
     set par(
         justify: true,
         linebreaks: "optimized",
-
-        // These values were calibrated for the current font by checking how many
-        // lines LaTeX can fit on a page using the same font and page size and then
-        // adjusting these until Typst can fit the same number of lines; this is
-        // because there is no good one-to-one mapping (that I know of) between how
-        // these values are specified in LaTeX and Typst. These values are probably
-        // font-dependent (at least the default line height usually is) and may
-        // require recalibration whenever the font is changed.
-        first-line-indent: 1.5em,
-        spacing: .56em,
-        leading: .56em
+        first-line-indent: par-first-line-indent,
+        spacing: par-spacing,
+        leading: par-leading
     )
 
     set text(
@@ -453,7 +462,7 @@
     show heading.where(depth: 3): it => text(weight: "regular", size: subsection-size, it)
 
     set strong(delta: 200)
-    set list(indent: 1em)
+    set list(indent: 1em, marker: (list-sep,))
     show list: set par(spacing: 1em)
     set table(stroke: none)
     set table.hline(stroke: .5pt)
