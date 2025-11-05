@@ -30,6 +30,8 @@
 #let hline = table.hline()
 #let vlineat(x) = table.vline(x: x)
 #let hlineat(y) = table.hline(y: y)
+#let vlinesat(..x) = x.pos().map(vlineat)
+#let hlinesat(..y) = y.pos().map(hlineat)
 #let cc(x) = align(center + horizon)[#x]
 #let fill = h(1fr)
 #let smallskip = v(.5em)
@@ -40,6 +42,7 @@
 #let hy() = [\u{2011}] // Non-breaking hyphen.
 #let thinsp() = [\u{2009}] // Thin space.
 #let col2(x) = table.cell(colspan: 2)[#x]
+#let col3(x) = table.cell(colspan: 3)[#x]
 #let row2(x) = table.cell(rowspan: 2)[#x]
 #let row3(x) = table.cell(rowspan: 3)[#x]
 
@@ -248,7 +251,7 @@
 // ============================================================================
 //  Page and Section Helpers
 // ============================================================================
-#let chapter(english-title, chapter-label) = {
+#let chapter(english-title, chapter-label, outlined: true) = {
     cleardoublepage()
     v(50pt)
     counter(footnote).update(0)
@@ -257,7 +260,7 @@
     set par(first-line-indent: 0pt)
     let format = {
         [
-            #heading(depth: 1, english-title, hanging-indent: 0pt)
+            #heading(depth: 1, english-title, hanging-indent: 0pt, outlined: outlined)
             #label("ch:" + chapter-label)
         ]
     }
@@ -354,6 +357,29 @@
 }
 
 // ============================================================================
+//  Glossary
+// ============================================================================
+#let glossary(cols: 3, ..entries) = {
+
+    // Split into 3 equal partitions, chopping off excess elements.
+    let partitions = entries.pos().chunks(int(entries.pos().len() / cols), exact: true)
+
+    // If there are trailing elements, append them to the individual partitions in turn.
+    let partitioned_elements = partitions.map(it => it.len()).fold(0, (acc, n) => acc + n)
+    let next_part = 0
+    for entry in entries.pos().slice(partitioned_elements) {
+        partitions.at(next_part).push(entry)
+        next_part += 1
+    }
+
+    // Lay out the partitioned elements.
+    grid(columns: cols, ..partitions.map(partition => table(
+        columns: 2,
+        ..partition.map(((term, def)) => (table.cell[#term], table.cell[#def])).join(),
+    ) + h(1fr)))
+}
+
+// ============================================================================
 //  Figures, Tables, etc.
 // ============================================================================
 #let center-table(..content, size: normalfont-size, caption: [Caption], stroke: none) = figure(
@@ -426,7 +452,8 @@
     show heading.where(depth: 2): it => text(weight: "regular", size: section-size, it) + v(10pt)
     show heading.where(depth: 3): it => text(weight: "regular", size: subsection-size, it)
 
-    set list(marker: ([–], list-sep), indent: 1em)
+    set strong(delta: 200)
+    set list(indent: 1em)
     show list: set par(spacing: 1em)
     set table(stroke: none)
     set table.hline(stroke: .5pt)
