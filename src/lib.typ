@@ -57,6 +57,7 @@
 #let col3(x) = table.cell(colspan: 3)[#x]
 #let row2(x) = table.cell(rowspan: 2)[#x]
 #let row3(x) = table.cell(rowspan: 3)[#x]
+#let Bar(x) = overline(x, offset: -.8em)
 
 
 // ============================================================================
@@ -66,6 +67,7 @@
 #let __gloss-show-numbers = state("gloss_show_numbers", true)
 #let __show-header = state("show-header", false)
 #let __gloss-counter = counter("gloss")
+#let __gloss_quotes = state("gloss-quotes", ([‘], [’]))
 
 
 // ============================================================================
@@ -111,6 +113,7 @@
 }
 
 #let gloss-show-numbers(new-value) = __gloss-show-numbers.update(new-value)
+#let gloss-set-quotes(lquote, rquote) = __gloss_quotes.update((lquote, rquote))
 
 // ============================================================================
 //  Page and Text Setup
@@ -216,6 +219,7 @@
         .map(x => x.trim())
         .filter(x => x.len() != 0)
 
+    let (lquote, rquote) = __gloss_quotes.get()
     let the-gloss = for (text, l2, l3, translation) in lines.chunks(4, exact: true) {
         let text_split = l2.split(separator)
         let gloss = l3.split(separator)
@@ -224,7 +228,7 @@
             [#for (t, g) in text_split.zip(gloss) {
                 box[#stack(dir: ttb, [#emph(t)#h(4pt)], [#braces-to-smallcaps(g) #h(4pt)], spacing: .5em)]
             }],
-            [“#translation”]
+            [#lquote#translation#rquote]
         )
     }
 
