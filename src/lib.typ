@@ -191,27 +191,31 @@
 // ============================================================================
 //  Glosses
 // ============================================================================
-#let braces-to-smallcaps(s) = {
+#let __gloss-handle-braces-brackets(s) = {
     let parts = ()
     while true {
-        let lbrace = s.position("{")
+        let lbrace = s.position(regex("[\[{]"))
         if lbrace == none {
             parts.push([#s])
             break
         }
 
         parts.push(s.slice(0, lbrace))
+        let char = s.at(lbrace)
         s = s.slice(lbrace + 1)
 
-        let rbrace = s.position("}")
+        let rbrace = s.position(regex("[\]}]"))
         assert(rbrace != none, message: "Unterminated } in gloss!")
         let text = s.slice(0, rbrace)
-        parts.push([#smallcaps(text)])
+        parts.push([#if char == "{" { smallcaps(text) } else { emph(text) }])
         s = s.slice(rbrace + 1)
     }
 
     parts.join()
 }
+
+#let __gloss-merge-ws(x) = x.replace(regex("\s+"), " ")
+#let __gloss-field-replace(x) = x.replace("~", " ")
 
 #let gloss_impl(separator: " ", loc: none, x) = {
     let lines = x
@@ -221,12 +225,17 @@
 
     let (lquote, rquote) = __gloss_quotes.get()
     let the-gloss = for (text, l2, l3, translation) in lines.chunks(4, exact: true) {
-        let text_split = l2.split(separator)
-        let gloss = l3.split(separator)
+        let text_split = __gloss-merge-ws(l2).split(separator)
+        let gloss = __gloss-merge-ws(l3).split(separator)
         stack(dir: ttb, spacing: .5em,
             strong(text),
             [#for (t, g) in text_split.zip(gloss) {
-                box[#stack(dir: ttb, [#emph(t)#h(4pt)], [#braces-to-smallcaps(g) #h(4pt)], spacing: .5em)]
+                box(stack(
+                    dir: ttb,
+                    spacing: .5em,
+                    [#emph(__gloss-field-replace(t))#h(4pt)],
+                    [#__gloss-handle-braces-brackets(__gloss-field-replace(g)) #h(4pt)],
+                ))
             }],
             [#lquote#translation#rquote]
         )
@@ -260,6 +269,38 @@
             f
         }
     }
+}
+
+#let multigloss(separator: " ", line-spacing: 1.25em, x) = {
+    set par(
+        first-line-indent: 0pt,
+        justify: false,
+        linebreaks: "simple",
+        leading: line-spacing
+    )
+
+    let lines = x
+        .split("\n")
+        .map(x => x.trim())
+        .filter(x => x.len() != 0)
+
+    block(
+        breakable: true,
+        above: 1em,
+        below: 1em,
+        for (l1, l2) in lines.chunks(2, exact: true) {
+            let text = __gloss-merge-ws(l1).split(separator)
+            let gloss = __gloss-merge-ws(l2).split(separator)
+            let skip = .675em
+            for (t, g) in text.zip(gloss) {
+                box(stack(
+                    dir: ttb,
+                    [#emph(__gloss-field-replace(t)) #h(skip)],
+                    [#__gloss-handle-braces-brackets(__gloss-field-replace(g)) #h(skip)], spacing: .5em)
+                )
+            }
+        }
+    )
 }
 
 #let refgloss(x) = (context query(label("gloss:" + x)).first())
