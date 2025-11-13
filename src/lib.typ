@@ -468,6 +468,11 @@
     outline()
 }
 
+#let verse(lines, parsep: 2em) = {
+    set par(first-line-indent: 0pt, spacing: parsep)
+    block(align(left, lines))
+}
+
 // ============================================================================
 //  Show and set rules.
 // ============================================================================
