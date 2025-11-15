@@ -4,6 +4,13 @@
 #import "@preview/rowmantic:0.5.0" : rowtable, expandcell
 
 // ============================================================================
+//  Overrides of builtin functions.
+// ============================================================================
+// Smallcaps should ignore italics.
+#let __smallcaps = smallcaps
+#let smallcaps(..args) = text(style: "normal", __smallcaps(..args))
+
+// ============================================================================
 //  Constants and Helper Functions
 // ============================================================================
 #let small-size = 11pt
@@ -68,7 +75,7 @@
 #let __show-header = state("show-header", false)
 #let __gloss-counter = counter("gloss")
 #let __gloss_quotes = state("gloss-quotes", ([‘], [’]))
-
+#let __draft-mode = state("draft-mode", true)
 
 // ============================================================================
 //  State Helpers
@@ -473,6 +480,24 @@
 #let verse(lines, parsep: 2em) = {
     set par(first-line-indent: 0pt, spacing: parsep)
     block(align(left, lines))
+}
+
+// Show the first and last word of each page.
+// Disabled in draft mode because it is *very* slow (takes ~4 seconds for 3000); only enable
+// this when building the final document for printing!!!
+#let dictionary-mark(content) = context {
+    set page(
+        header: context mark-both({
+            let this-page = here().page()
+            let sel = selector(<dict-entry>)
+            let marks = query(sel).filter(it => it.location().page() == this-page)
+            if marks.len() != 0 [
+                *#marks.first().value | #marks.last().value*
+            ]
+        })
+    ) if not __draft-mode.get()
+
+    content
 }
 
 // ============================================================================
