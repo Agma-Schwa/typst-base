@@ -214,11 +214,12 @@
     parts.join()
 }
 
-#let __gloss-merge-ws(x) = x.replace(regex("\s+"), " ")
+// Merge whitespace and undo some escape sequences.
+#let __gloss-merge-ws(x) = x.replace(regex("[ ]+"), " ")
 #let __gloss-field-replace(x) = x.replace("~", " ")
 
 #let gloss_impl(separator: " ", loc: none, x) = {
-    let lines = x
+    let lines = (if type(x) == content { x.text } else { x })
         .split("\n")
         .map(x => x.trim())
         .filter(x => x.len() != 0)
@@ -279,7 +280,8 @@
         leading: line-spacing
     )
 
-    let lines = x
+
+    let lines = (if type(x) == content { x.text } else { x })
         .split("\n")
         .map(x => x.trim())
         .filter(x => x.len() != 0)
