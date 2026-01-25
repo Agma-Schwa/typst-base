@@ -485,7 +485,7 @@
 // Show the first and last word of each page.
 // Disabled in draft mode because it is *very* slow (takes ~4 seconds for 3000); only enable
 // this when building the final document for printing!!!
-#let dictionary-mark(content) = context {
+#let __dictionary-mark(content) = context {
     set page(
         header: context mark-both({
             let this-page = here().page()
@@ -498,6 +498,111 @@
     ) if not __draft-mode.get()
 
     content
+}
+
+#let __typeset-entry(entry, lemma-format) = {
+    // This doesn’t stop #s from working unlike #emph.
+    let italic(x) = text(style: "italic", x)
+    let render(node) = {
+        let render-all(nodes) = {
+            nodes.map(render).join()
+        }
+
+        if "text" in node {
+            node.text
+        } else if "math" in node {
+            node.math
+        } else if "group" in node {
+            render-all(node.group)
+        } else if "macro" in node {
+                if node.macro.name == "bold" [*#render-all(node.macro.args)*]
+            else if node.macro.name == "ellipsis" [...]
+            else if node.macro.name == "italic" { italic(render-all(node.macro.args)) }
+            else if node.macro.name == "lemma" { lemma-format(render-all(node.macro.args)) }
+            else if node.macro.name == "normal" { text(style: "normal", render-all(node.macro.args)) }
+            else if node.macro.name == "paragraph_break" { parbreak() }
+            else if node.macro.name == "sense" [sense~#render-all(node.macro.args)]
+            else if node.macro.name == "small_caps" { s(render-all(node.macro.args)) }
+            else if node.macro.name == "subscript" { sub(render-all(node.macro.args)) }
+            else if node.macro.name == "superscript" { super(render-all(node.macro.args)) }
+            else if node.macro.name == "soft_hyphen" [-?]
+            else if node.macro.name == "this" { lemma-format(render(entry.word)) }
+        } else {
+            panic("Unsupported node: ", node)
+        }
+    }
+
+    let is-empty(node) = {
+        "text" in node and node.text == ""
+    }
+
+    if "ref" in entry {
+        par(first-line-indent: 0pt)[
+            #metadata(render(entry.word)) <dict-entry>
+            #text(size:13pt, weight: "semibold", render(entry.word)) $arrow$ #render(entry.ref)
+        ]
+    } else { block[
+        #let examples(exs) = if "examples" in exs and exs.examples.len() != 0 [
+
+            #set block(below: .65em, above: .65em)
+            #list(
+                indent: .7em,
+                body-indent: .3em,
+                marker: $diamond.small$,
+                spacing: .5em,
+                ..exs.examples.map(e => [
+                    #render(e.text)
+                    #if "comment" in e { italic(render(e.comment)) }
+                ])
+            )
+        ]
+
+        #set par(hanging-indent: .5em, first-line-indent: 0pt)
+        #set list(tight: true)
+        #set enum(tight: true)
+        #metadata(render(entry.word)) <dict-entry>
+
+        #text(size:13pt, weight: "semibold")[#render(entry.word)]
+        #italic(render(entry.pos))
+        #if not is-empty(entry.etym) [[#render(entry.etym)]]
+        #if "forms" in entry [#italic(render(entry.forms)).]
+        #if "primary_definition" in entry [
+            #render(entry.primary_definition.def)
+            #if "comment" in entry.primary_definition { italic(render(entry.primary_definition.comment)) }
+            #examples(entry.primary_definition)
+        ]#parbreak()
+
+        #if "senses" in entry and entry.senses.len() != 0 {
+            for (i, s) in entry.senses.enumerate() [
+                #set par(first-line-indent: (amount: .2em, all: true))
+                #text(weight: "semibold")[#(i+1).] #render(s.def)
+                #if "comment" in s { italic(render(s.comment)) }
+                #parbreak()
+                #examples(s)
+            ]
+        }
+
+        #v(.1em)
+    ] }
+}
+
+/// Generate a dictionary using a dictionary file and generator plugin.
+///
+/// Example:
+/// ```typst
+/// #dictionary(
+///     read("my_language.dict.txt"),
+///     plugin("plugin/target/wasm32-unknown-unknown/release/plugin.wasm"),
+///     it => text(weight: "semibold", it)
+/// )
+/// ```
+#let dictionary(dictionary-contents, dictionary-plugin, lemma-format) = {
+    let dictionary-obj = json(dictionary-plugin.generate_dictionary(bytes(dictionary-contents)))
+    pagebreak()
+    set page(columns: 2)
+    set columns(gutter: 1em)
+    show : __dictionary-mark
+    dictionary-obj.entries.map(it => __typeset-entry(it, lemma-format)).join()
 }
 
 // ============================================================================
