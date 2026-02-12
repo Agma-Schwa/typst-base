@@ -20,7 +20,8 @@
 #let huge-size = 30pt
 #let subsection-size = 14pt
 #let section-size = 16pt
-#let chapter-size = 30pt
+#let __compact-chapter-size = 20pt
+#let __chapter-size = 30pt
 #let list-sep = $diamond.stroked.small$
 
 // These values were calibrated for the current font by checking how many
@@ -65,6 +66,8 @@
 #let row2(x) = table.cell(rowspan: 2)[#x]
 #let row3(x) = table.cell(rowspan: 3)[#x]
 #let Bar(x) = overline(x, offset: -.8em)
+#let italic = text.with(style: "italic") // emph() that can be toggled off by nesting text(style: "normal")
+#let normal = text.with(style: "normal")
 
 
 // ============================================================================
@@ -76,16 +79,22 @@
 #let __gloss-counter = counter("gloss")
 #let __gloss_quotes = state("gloss-quotes", ([‘], [’]))
 #let __draft-mode = state("draft-mode", true)
+#let __compact = state("compact", false)
 
 // ============================================================================
 //  State Helpers
 // ============================================================================
 #let in-mainmatter() = __mainmatter.get()
+#let chapter-size() = if __compact.get() { __compact-chapter-size } else { __chapter-size }
 
 #let cleardoublepage() = {
-    __show-header.update(false)
-    pagebreak(weak: true, to: "odd")
-    __show-header.update(true)
+    context if __compact.get() {
+        pagebreak(weak: true)
+    } else {
+        __show-header.update(false)
+        pagebreak(weak: true, to: "odd")
+        __show-header.update(true)
+    }
 }
 
 #let mainmatter(content) = {
@@ -198,12 +207,38 @@
 // ============================================================================
 //  Glosses
 // ============================================================================
+#let gloss-default-replacements = ("~": " ")
+#let __gloss_replacements = state("gloss-functions", gloss-default-replacements)
+
+// Merge whitespace.
+#let __gloss-merge-ws(x) = x.replace(regex("[ ]+"), " ")
+
+// Apply replacement sequences.
+#let __gloss-apply-replacements(s_in) = context {
+    let s = s_in
+    let parts = ()
+    while s.len() != 0 {
+        for (val, repl) in __gloss_replacements.get() {
+            let pos = s.position(val)
+            if pos == none { continue }
+            parts.push(s.slice(0, pos))
+            s = s.slice(pos + val.len())
+            parts.push(repl)
+        }
+
+        // No more replacements.
+        parts.push(s)
+        break
+    }
+    parts.join()
+}
+
 #let __gloss-handle-braces-brackets(s) = {
     let parts = ()
     while true {
         let lbrace = s.position(regex("[\[{]"))
         if lbrace == none {
-            parts.push([#s])
+            parts.push(__gloss-apply-replacements(s))
             break
         }
 
@@ -214,16 +249,16 @@
         let rbrace = s.position(regex("[\]}]"))
         assert(rbrace != none, message: "Unterminated } in gloss!")
         let text = s.slice(0, rbrace)
-        parts.push([#if char == "{" { smallcaps(text) } else { emph(text) }])
+        parts.push([#if char == "{" { smallcaps(__gloss-apply-replacements(text)) } else { emph(__gloss-apply-replacements(text)) }])
         s = s.slice(rbrace + 1)
     }
 
     parts.join()
 }
 
-// Merge whitespace and undo some escape sequences.
-#let __gloss-merge-ws(x) = x.replace(regex("[ ]+"), " ")
-#let __gloss-field-replace(x) = x.replace("~", " ")
+#let gloss-set-replacements(dict) = {
+    __gloss_replacements.update(dict)
+}
 
 #let gloss_impl(separator: " ", loc: none, x) = {
     let lines = (if type(x) == content { x.text } else { x })
@@ -236,16 +271,16 @@
         let text_split = __gloss-merge-ws(l2).split(separator)
         let gloss = __gloss-merge-ws(l3).split(separator)
         stack(dir: ttb, spacing: .5em,
-            strong(text),
+            strong(__gloss-apply-replacements(text)),
             [#for (t, g) in text_split.zip(gloss) {
                 box(stack(
                     dir: ttb,
                     spacing: .5em,
-                    [#emph(__gloss-field-replace(t))#h(4pt)],
-                    [#__gloss-handle-braces-brackets(__gloss-field-replace(g)) #h(4pt)],
+                    [#italic(__gloss-apply-replacements(t))#h(4pt)],
+                    [#__gloss-handle-braces-brackets(g) #h(4pt)],
                 ))
             }],
-            [#lquote#translation#rquote]
+            [#lquote#__gloss-apply-replacements(translation)#rquote]
         )
     }
 
@@ -304,8 +339,8 @@
             for (t, g) in text.zip(gloss) {
                 box(stack(
                     dir: ttb,
-                    [#emph(__gloss-field-replace(t)) #h(skip)],
-                    [#__gloss-handle-braces-brackets(__gloss-field-replace(g)) #h(skip)], spacing: .5em)
+                    [#emph(__gloss-apply-replacements(t)) #h(skip)],
+                    [#__gloss-handle-braces-brackets(__gloss-apply-replacements(g)) #h(skip)], spacing: .5em)
                 )
             }
         }
@@ -318,8 +353,13 @@
 //  Page and Section Helpers
 // ============================================================================
 #let chapter(english-title, chapter-label, outlined: true) = {
-    cleardoublepage()
-    v(50pt)
+    context if __compact.get() {
+        v(20pt)
+    } else {
+        cleardoublepage()
+        v(50pt)
+    }
+
     counter(footnote).update(0)
     __gloss-counter.update(0)
 
@@ -334,15 +374,23 @@
     context if not in-mainmatter() {
         format
     } else {
-        stack(dir: ltr, [
+        // box() is needed to make sure the number and chapter name are on the
+        // same line; block() is needed to suppress indentation of the first line
+        // after the chapter head.
+        block(box(stack(dir: ltr, [
             #if in-mainmatter() {
                 counter(selector(heading).before(here())).display((it, ..) =>
-                    text(chapter-size, number-type: "lining")[#(it + 1)]
+                    text(chapter-size(), number-type: "lining")[#(it + 1)]
                 )
             }
-        ], move(dx: if in-mainmatter() { 1.5em } else { 0pt }, [
-            #format
-        ]))
+        ], move(
+            dx: if in-mainmatter() {
+                if __compact.get() { 1em } else { 1.5em }
+            } else {
+                0pt
+            },
+            [#format]
+        ))))
     }
 }
 
@@ -543,7 +591,6 @@
         ]
     } else { block[
         #let examples(exs) = if "examples" in exs and exs.examples.len() != 0 [
-
             #set block(below: .65em, above: .65em)
             #list(
                 indent: .7em,
@@ -563,6 +610,7 @@
         #metadata(render(entry.word)) <dict-entry>
 
         #text(size:13pt, weight: "semibold")[#render(entry.word)]
+        #if "ipa" in entry { box[/#render(entry.ipa)/] }
         #italic(render(entry.pos))
         #if not is-empty(entry.etym) [[#render(entry.etym)]]
         #if "forms" in entry [#italic(render(entry.forms)).]
@@ -612,7 +660,14 @@
     content,
 
     // [REDACTED] needs to set a custom chapter size.
-    chapter-size: chapter-size
+    chapter-size: chapter-size,
+
+    // Enables compact layout if true:
+    //
+    //   - Do not insert a page break before a chapter.
+    //   - Do not require a chapter to start on an odd page.
+    //
+    compact: false,
 ) = {
     // Page etc.
     set page(
@@ -639,7 +694,16 @@
         hyphenate: true
     )
 
-    show heading.where(depth: 1): it => text(weight: "regular", size: chapter-size, it) + v(30pt)
+    if compact {
+        __compact.update(true)
+    }
+
+    show heading.where(depth: 1): it => context text(
+        weight: "regular",
+        size: chapter-size(),
+        it
+    ) + v(chapter-size())
+
     show heading.where(depth: 2): it => text(weight: "regular", size: section-size, it) + v(10pt)
     show heading.where(depth: 3): it => text(weight: "regular", size: subsection-size, it)
 
