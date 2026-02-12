@@ -559,41 +559,40 @@
     content
 }
 
+#let render-dictionary-node(node, current-word) = {
+    let render-all(nodes) = {
+        nodes.map(it => render-dictionary-node(it, current-word)).join()
+    }
+
+    if "text" in node {
+        node.text
+    } else if "math" in node {
+        node.math
+    } else if "group" in node {
+        render-all(node.group)
+    } else if "macro" in node {
+            if node.macro.name == "bold" [*#render-all(node.macro.args)*]
+        else if node.macro.name == "ellipsis" [...]
+        else if node.macro.name == "italic" { italic(render-all(node.macro.args)) }
+        else if node.macro.name == "lemma" { lemma-format(render-all(node.macro.args)) }
+        else if node.macro.name == "normal" { text(style: "normal", render-all(node.macro.args)) }
+        else if node.macro.name == "paragraph_break" { parbreak() }
+        else if node.macro.name == "sense" [sense~#render-all(node.macro.args)]
+        else if node.macro.name == "small_caps" { s(render-all(node.macro.args)) }
+        else if node.macro.name == "subscript" { sub(render-all(node.macro.args)) }
+        else if node.macro.name == "superscript" { super(render-all(node.macro.args)) }
+        else if node.macro.name == "soft_hyphen" [-?]
+        else if node.macro.name == "this" { lemma-format(render(current-word)) }
+    } else {
+        panic("Unsupported node: ", node)
+    }
+}
+
 #let __typeset-entry(entry, lemma-format) = {
     // This doesn’t stop #s from working unlike #emph.
     let italic(x) = text(style: "italic", x)
-    let render(node) = {
-        let render-all(nodes) = {
-            nodes.map(render).join()
-        }
-
-        if "text" in node {
-            node.text
-        } else if "math" in node {
-            node.math
-        } else if "group" in node {
-            render-all(node.group)
-        } else if "macro" in node {
-                if node.macro.name == "bold" [*#render-all(node.macro.args)*]
-            else if node.macro.name == "ellipsis" [...]
-            else if node.macro.name == "italic" { italic(render-all(node.macro.args)) }
-            else if node.macro.name == "lemma" { lemma-format(render-all(node.macro.args)) }
-            else if node.macro.name == "normal" { text(style: "normal", render-all(node.macro.args)) }
-            else if node.macro.name == "paragraph_break" { parbreak() }
-            else if node.macro.name == "sense" [sense~#render-all(node.macro.args)]
-            else if node.macro.name == "small_caps" { s(render-all(node.macro.args)) }
-            else if node.macro.name == "subscript" { sub(render-all(node.macro.args)) }
-            else if node.macro.name == "superscript" { super(render-all(node.macro.args)) }
-            else if node.macro.name == "soft_hyphen" [-?]
-            else if node.macro.name == "this" { lemma-format(render(entry.word)) }
-        } else {
-            panic("Unsupported node: ", node)
-        }
-    }
-
-    let is-empty(node) = {
-        "text" in node and node.text == ""
-    }
+    let is-empty(node) = { "text" in node and node.text == "" }
+    let render(node) = render-dictionary-node(node, entry.word)
 
     if "ref" in entry {
         par(first-line-indent: 0pt)[
