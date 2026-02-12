@@ -353,6 +353,10 @@
 //  Page and Section Helpers
 // ============================================================================
 #let chapter(english-title, chapter-label, outlined: true) = {
+    panic("#chapter() has been removed; use '= heading' instead.")
+}
+
+#let __make-chapter-head(it) = {
     context if __compact.get() {
         v(20pt)
     } else {
@@ -365,10 +369,11 @@
 
     set par(first-line-indent: 0pt)
     let format = {
-        [
-            #heading(depth: 1, english-title, hanging-indent: 0pt, outlined: outlined)
-            #label("ch:" + chapter-label)
-        ]
+        context text(
+            weight: "regular",
+            size: chapter-size(),
+            it
+        ) + v(chapter-size())
     }
 
     context if not in-mainmatter() {
@@ -380,7 +385,11 @@
         block(box(stack(dir: ltr, [
             #if in-mainmatter() {
                 counter(selector(heading).before(here())).display((it, ..) =>
-                    text(chapter-size(), number-type: "lining")[#(it + 1)]
+                    text(
+                        chapter-size(),
+                        weight: "regular",
+                        number-type: "lining"
+                    )[#it]
                 )
             }
         ], move(
@@ -524,6 +533,8 @@
     cleardoublepage()
     outline()
 }
+
+#let outline = table-of-contents
 
 #let verse(lines, parsep: 2em) = {
     set par(first-line-indent: 0pt, spacing: parsep)
@@ -698,17 +709,17 @@
         __compact.update(true)
     }
 
-    show heading.where(depth: 1): it => context text(
-        weight: "regular",
-        size: chapter-size(),
-        it
-    ) + v(chapter-size())
+    show heading.where(depth: 1): it => __make-chapter-head(it)
+    show heading.where(depth: 1): set par(hanging-indent: 0pt)
 
     show heading.where(depth: 2): it => text(weight: "regular", size: section-size, it) + v(10pt)
     show heading.where(depth: 3): it => text(weight: "regular", size: subsection-size, it)
 
     set strong(delta: 200)
     set list(indent: 1em, marker: (list-sep,))
+    set enum(indent: 1em)
+    show enum: set block(spacing: 1em)
+    show enum.where(tight: false): set par(spacing: 1em)
     show list: set par(spacing: 1em)
     set table(stroke: none)
     set table.hline(stroke: .5pt)
