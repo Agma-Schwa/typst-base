@@ -559,9 +559,17 @@
     content
 }
 
-#let render-dictionary-node(node, current-word) = {
+#let render-dictionary-node(
+    node,
+    current-word : "<no current word>",
+    lemma-format: it => text(weight: "semibold", it),
+) = {
     let render-all(nodes) = {
-        nodes.map(it => render-dictionary-node(it, current-word)).join()
+        nodes.map(it => render-dictionary-node(
+            it,
+            current-word: current-word,
+            lemma-format: lemma-format,
+        )).join()
     }
 
     if "text" in node {
@@ -589,10 +597,12 @@
 }
 
 #let __typeset-entry(entry, lemma-format) = {
-    // This doesn’t stop #s from working unlike #emph.
-    let italic(x) = text(style: "italic", x)
     let is-empty(node) = { "text" in node and node.text == "" }
-    let render(node) = render-dictionary-node(node, entry.word)
+    let render(node) = render-dictionary-node(
+        node,
+        current-word: entry.word,
+        lemma-format: lemma-format,
+    )
 
     if "ref" in entry {
         par(first-line-indent: 0pt)[
@@ -654,7 +664,11 @@
 ///     it => text(weight: "semibold", it)
 /// )
 /// ```
-#let dictionary(dictionary-contents, dictionary-plugin, lemma-format) = {
+#let dictionary(
+    dictionary-contents,
+    dictionary-plugin,
+    lemma-format: it => text(weight: "semibold", it),
+) = {
     let dictionary-obj = json(dictionary-plugin.generate_dictionary(bytes(dictionary-contents)))
     pagebreak()
     set page(columns: 2)
