@@ -590,7 +590,7 @@
         else if node.macro.name == "subscript" { sub(render-all(node.macro.args)) }
         else if node.macro.name == "superscript" { super(render-all(node.macro.args)) }
         else if node.macro.name == "soft_hyphen" [-?]
-        else if node.macro.name == "this" { lemma-format(render(current-word)) }
+        else if node.macro.name == "this" { lemma-format(render-dictionary-node(current-word)) }
         else if node.macro.name == "reference" {
             assert(node.macro.args.len() == 1, message: "\\ref has exactly 1 argument")
             assert("text" in node.macro.args.at(0), message: "Argument of \\ref must be a text node")
