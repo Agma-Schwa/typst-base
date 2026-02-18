@@ -80,6 +80,8 @@
 #let __gloss_quotes = state("gloss-quotes", ([‘], [’]))
 #let __draft-mode = state("draft-mode", true)
 #let __compact = state("compact", false)
+#let __gloss_ipa_function = state("gloss-ipa-function", (val: none)) // Can't store a function directly in state...
+#let __gloss_line_spacing = state("gloss-line-spacing", .5em)
 
 // ============================================================================
 //  State Helpers
@@ -270,21 +272,26 @@
     let the-gloss = for (text, l2, l3, translation) in lines.chunks(4, exact: true) {
         let text_split = __gloss-merge-ws(l2).split(separator)
         let gloss = __gloss-merge-ws(l3).split(separator)
-        stack(dir: ttb, spacing: .5em,
+        let spacing = .34em
+        let line-spacing = __gloss_line_spacing.get()
+        stack(dir: ttb, spacing: line-spacing,
             strong(__gloss-apply-replacements(text)),
             [#for (t, g) in text_split.zip(gloss) {
+                let parts = ()
+                parts.push[#italic(__gloss-apply-replacements(t))#h(spacing)]
+                if __gloss_ipa_function.get() != none { parts.push([#(__gloss_ipa_function.get().val)(t)#h(spacing)]) }
+                parts.push[#__gloss-handle-braces-brackets(g) #h(spacing)]
                 box(stack(
                     dir: ttb,
-                    spacing: .5em,
-                    [#italic(__gloss-apply-replacements(t))#h(4pt)],
-                    [#__gloss-handle-braces-brackets(g) #h(4pt)],
+                    spacing: line-spacing,
+                    ..parts
                 ))
             }],
             [#lquote#__gloss-apply-replacements(translation)#rquote]
         )
     }
 
-    context if __gloss-show-numbers.get() {
+    if __gloss-show-numbers.get() {
         grid(columns:2, [(#__gloss-counter.at(loc).first())#en], the-gloss)
     } else {
         the-gloss
@@ -312,6 +319,14 @@
             f
         }
     }
+}
+
+#let gloss-set-ipa-function(f) = {
+    __gloss_ipa_function.update((val: f))
+}
+
+#let gloss-set-line-spacing(val) = {
+    __gloss_line_spacing.update(val)
 }
 
 #let multigloss(separator: " ", line-spacing: 1.25em, x) = {
