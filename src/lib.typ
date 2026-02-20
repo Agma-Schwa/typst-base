@@ -232,7 +232,9 @@
         parts.push(s)
         break
     }
-    parts.join()
+
+    // Evaluate each part to make sure formatting works properly.
+    parts.map(it => eval("[" + it + "]")).join()
 }
 
 #let __gloss-handle-braces-brackets(s) = {
@@ -262,17 +264,23 @@
     __gloss_replacements.update(dict)
 }
 
-#let gloss_impl(separator: " ", loc: none, x) = {
+#let gloss_impl(
+    separator: " ",
+    spacing-override: none,
+    loc: none,
+    x
+) = {
     let lines = (if type(x) == content { x.text } else { x })
         .split("\n")
         .map(x => x.trim())
+
         .filter(x => x.len() != 0)
 
     let (lquote, rquote) = __gloss_quotes.get()
     let the-gloss = for (text, l2, l3, translation) in lines.chunks(4, exact: true) {
         let text_split = __gloss-merge-ws(l2).split(separator)
         let gloss = __gloss-merge-ws(l3).split(separator)
-        let spacing = .34em
+        let spacing = if spacing-override != none { spacing-override } else { .34em }
         let line-spacing = __gloss_line_spacing.get()
         stack(dir: ttb, spacing: line-spacing,
             strong(__gloss-apply-replacements(text)),
@@ -298,16 +306,23 @@
     }
 }
 
-#let gloss(separator: " ", lbl: none, x) = {
+#let gloss(separator: " ", lbl: none, x, spacing-override: none) = {
     context if __gloss-show-numbers.get() {
         counter.step(__gloss-counter)
     }
+
+    set par(justify: false, linebreaks: "simple")
 
     context {
         let f = figure(
             kind: "gloss",
             supplement: none,
-            gloss_impl(separator: separator, loc: here(), x)
+            gloss_impl(
+                separator: separator,
+                loc: here(),
+                spacing-override: spacing-override,
+                x
+            )
         )
 
         if lbl != none {
@@ -749,6 +764,7 @@
 
     show heading.where(depth: 2): it => text(weight: "regular", size: section-size, it) + v(10pt)
     show heading.where(depth: 3): it => text(weight: "regular", size: subsection-size, it)
+    show heading.where(depth: 4): it => text(weight: "regular", it)
 
     set strong(delta: 200)
     set list(indent: 1em, marker: (list-sep,))
