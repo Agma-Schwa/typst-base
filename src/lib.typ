@@ -402,7 +402,7 @@
     panic("#chapter() has been removed; use '= heading' instead.")
 }
 
-#let __make-chapter-head(it) = context {
+#let start-chapter() = context {
     if __compact.get() {
         v(20pt)
     } else {
@@ -412,7 +412,10 @@
 
     counter(footnote).update(0)
     __gloss-counter.update(0)
+}
 
+#let __make-chapter-head(it) = context {
+    start-chapter()
     set par(first-line-indent: 0pt)
     let format = {
         text(
@@ -580,8 +583,6 @@
     outline()
 }
 
-#let outline = table-of-contents
-
 #let verse(lines, parsep: 2em) = {
     set par(first-line-indent: 0pt, spacing: parsep)
     block(align(left, lines))
@@ -739,6 +740,9 @@
     // [REDACTED] needs to set a custom chapter size.
     chapter-size: chapter-size,
 
+    // [REDACTED] uses custom chapter heads,
+    custom-chapter-heads: false,
+
     // Enables compact layout if true:
     //
     //   - Do not insert a page break before a chapter.
@@ -775,12 +779,17 @@
         __compact.update(true)
     }
 
-    show heading.where(depth: 1): it => __make-chapter-head(it)
     show heading.where(depth: 1): set par(hanging-indent: 0pt)
+    show heading.where(depth: 1): it => if custom-chapter-heads {
+        it
+    } else {
+        __make-chapter-head(it)
+    }
 
     show heading.where(depth: 2): it => text(weight: "regular", size: section-size, it) + v(10pt)
     show heading.where(depth: 3): it => text(weight: "regular", size: subsection-size, it)
     show heading.where(depth: 4): it => text(weight: "regular", it)
+    show heading.where(depth: 5): it => text(weight: "regular", it)
 
     set strong(delta: 200)
     set list(indent: 1em, marker: (list-sep,))
