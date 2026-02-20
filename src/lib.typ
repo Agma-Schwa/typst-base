@@ -137,8 +137,21 @@
 //  Page and Text Setup
 // ============================================================================
 #let page-num() = counter(page).display()
-#let mark-even(header) = grid(columns: (auto, 1fr), [#page-num()], align(right, header))
-#let mark-odd(header) = grid(columns: (1fr, auto), align(left, header), [#page-num()])
+
+// The 'top' alignment might seem silly but it’s required in case the
+// chapter or section title spans multiple lines.
+#let mark-even(header) = grid(
+    columns: (auto, 1fr),
+    align(top)[#page-num()],
+    align(right, header)
+)
+
+#let mark-odd(header) = grid(
+    columns: (1fr, auto),
+    align(left, header),
+    align(top)[#page-num()]
+)
+
 #let make-header(even, odd) = {
     let this-page = here().page()
     if calc.even(this-page) {
@@ -220,7 +233,7 @@
 // We *cannot* call eval() on the input to process markup since some
 // of the formatting used in glosses conflicts with Typst syntax (e.g.
 // infixes, which use '<...>').
-#let __gloss-apply-replacements(s_in) = context {
+#let __gloss-apply-replacements(s_in) = {
     let s = s_in
     let parts = ()
     while s.len() != 0 {
@@ -347,7 +360,7 @@
     __gloss_line_spacing.update(val)
 }
 
-#let multigloss(separator: " ", line-spacing: 1.25em, x) = {
+#let multigloss(separator: " ", line-spacing: 1.25em, x) = context {
     set par(
         first-line-indent: 0pt,
         justify: false,
@@ -389,8 +402,8 @@
     panic("#chapter() has been removed; use '= heading' instead.")
 }
 
-#let __make-chapter-head(it) = {
-    context if __compact.get() {
+#let __make-chapter-head(it) = context {
+    if __compact.get() {
         v(20pt)
     } else {
         cleardoublepage()
@@ -402,37 +415,38 @@
 
     set par(first-line-indent: 0pt)
     let format = {
-        context text(
+        text(
             weight: "regular",
             size: chapter-size(),
             it
         ) + v(chapter-size())
     }
 
-    context if not in-mainmatter() {
+    if not in-mainmatter() {
         format
     } else {
         // box() is needed to make sure the number and chapter name are on the
         // same line; block() is needed to suppress indentation of the first line
         // after the chapter head.
-        block(box(stack(dir: ltr, [
-            #if in-mainmatter() {
-                counter(selector(heading).before(here())).display((it, ..) =>
-                    text(
-                        chapter-size(),
-                        weight: "regular",
-                        number-type: "lining"
-                    )[#it]
-                )
-            }
-        ], move(
-            dx: if in-mainmatter() {
-                if __compact.get() { 1em } else { 1.5em }
+        block(box(stack(dir: ltr,
+            spacing: if in-mainmatter() {
+               if __compact.get() { .5em } else { 1em }
             } else {
-                0pt
+               0pt
             },
+            [
+                #if in-mainmatter() {
+                    counter(selector(heading).before(here())).display((it, ..) =>
+                        text(
+                            chapter-size(),
+                            weight: "regular",
+                            number-type: "lining"
+                        )[#it]
+                    )
+                }
+            ],
             [#format]
-        ))))
+        )))
     }
 }
 
@@ -550,18 +564,17 @@
 
 #let table-of-contents() = {
     set outline.entry(fill: repeat([.], gap: .44em))
-
+    show outline.entry.where(level: 1): set block(above: 1.5em)
     show outline.entry.where(level: 1): it => link(
         it.element.location(),
         it.indented([
             #let num = counter(heading).at(it.element.location()).first()
             #if num != 0 [ #num ] else { hide[#num] } // Add a hidden '0' for indentation.
         ], [
+            #remove-whitespace-before()
             #it.body() #h(1fr) #it.page()
         ])
     )
-
-    show outline.entry.where(level: 1): set block(above: 1.5em)
 
     cleardoublepage()
     outline()
