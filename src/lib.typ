@@ -216,6 +216,10 @@
 #let __gloss-merge-ws(x) = x.replace(regex("[ ]+"), " ")
 
 // Apply replacement sequences.
+//
+// We *cannot* call eval() on the input to process markup since some
+// of the formatting used in glosses conflicts with Typst syntax (e.g.
+// infixes, which use '<...>').
 #let __gloss-apply-replacements(s_in) = context {
     let s = s_in
     let parts = ()
@@ -233,8 +237,7 @@
         break
     }
 
-    // Evaluate each part to make sure formatting works properly.
-    parts.map(it => eval("[" + it + "]")).join()
+    parts.join()
 }
 
 #let __gloss-handle-braces-brackets(s) = {
@@ -287,7 +290,7 @@
             [#for (t, g) in text_split.zip(gloss) {
                 let parts = ()
                 parts.push[#italic(__gloss-apply-replacements(t))#h(spacing)]
-                if __gloss_ipa_function.get() != none { parts.push([#(__gloss_ipa_function.get().val)(t)#h(spacing)]) }
+                if __gloss_ipa_function.get().val != none { parts.push([#(__gloss_ipa_function.get().val)(t)#h(spacing)]) }
                 parts.push[#__gloss-handle-braces-brackets(g) #h(spacing)]
                 box(stack(
                     dir: ttb,
