@@ -651,7 +651,6 @@
 }
 
 #let __typeset-entry(entry, lemma-format) = {
-    let is-empty(node) = { "text" in node and node.text == "" }
     let render(node) = render-dictionary-node(
         node,
         current-word: entry.word,
@@ -686,7 +685,7 @@
         #text(size:13pt, weight: "semibold")[#render(entry.word)]
         #if "ipa" in entry { box[/#render(entry.ipa)/] }
         #italic(render(entry.pos))
-        #if not is-empty(entry.etym) [[#render(entry.etym)]]
+        #if "etym" in entry [[#render(entry.etym)]]
         #if "forms" in entry [#italic(render(entry.forms)).]
         #if "primary_definition" in entry [
             #render(entry.primary_definition.def)
