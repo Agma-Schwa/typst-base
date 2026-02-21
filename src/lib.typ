@@ -608,12 +608,14 @@
 
 #let render-dictionary-node(
     node,
+    custom-macro-handler: (it, render-callback) => panic("Unknown macro: " + it.name),
     current-word : "<no current word>",
     lemma-format: it => text(weight: "semibold", it),
 ) = {
     let render-all(nodes) = {
         nodes.map(it => render-dictionary-node(
             it,
+            custom-macro-handler: custom-macro-handler,
             current-word: current-word,
             lemma-format: lemma-format,
         )).join()
@@ -645,14 +647,25 @@
         } else {
             panic("Unknown macro: ", node.macro.name)
         }
+    } else if "custom_macro" in node {
+        custom-macro-handler(
+            node.custom_macro,
+            it => render-dictionary-node(
+                it,
+                custom-macro-handler: custom-macro-handler,
+                current-word: current-word,
+                lemma-format: lemma-format,
+            )
+        )
     } else {
         panic("Unsupported node: ", node)
     }
 }
 
-#let __typeset-entry(entry, lemma-format) = {
+#let __typeset-entry(entry, lemma-format, custom-macro-handler) = {
     let render(node) = render-dictionary-node(
         node,
+        custom-macro-handler: custom-macro-handler,
         current-word: entry.word,
         lemma-format: lemma-format,
     )
@@ -721,13 +734,14 @@
     dictionary-contents,
     dictionary-plugin,
     lemma-format: it => text(weight: "semibold", it),
+    custom-macro-handler: (it, render-callback) => panic("Unknown macro: " + it.name)
 ) = {
     let dictionary-obj = json(dictionary-plugin.generate_dictionary(bytes(dictionary-contents)))
     pagebreak()
     set page(columns: 2)
     set columns(gutter: 1em)
     show : __dictionary-mark
-    dictionary-obj.entries.map(it => __typeset-entry(it, lemma-format)).join()
+    dictionary-obj.entries.map(it => __typeset-entry(it, lemma-format, custom-macro-handler)).join()
 }
 
 // ============================================================================
