@@ -233,20 +233,21 @@
 // We *cannot* call eval() on the input to process markup since some
 // of the formatting used in glosses conflicts with Typst syntax (e.g.
 // infixes, which use '<...>').
-#let __gloss-apply-replacements(s_in) = {
+#let __gloss-apply-replacements(s_in, should_eval) = {
     let s = s_in
     let parts = ()
     while s.len() != 0 {
         for (val, repl) in __gloss_replacements.get() {
             let pos = s.position(val)
             if pos == none { continue }
-            parts.push(s.slice(0, pos))
+            let str = s.slice(0, pos)
+            parts.push(if should_eval { eval("[" + str + "]")  } else { str } )
             s = s.slice(pos + val.len())
             parts.push(repl)
         }
 
         // No more replacements.
-        parts.push(s)
+        parts.push(if should_eval { eval("[" + s + "]")  } else { s } )
         break
     }
 
@@ -258,7 +259,7 @@
     while true {
         let lbrace = s.position(regex("[\[{]"))
         if lbrace == none {
-            parts.push(__gloss-apply-replacements(s))
+            parts.push(__gloss-apply-replacements(s, false))
             break
         }
 
@@ -269,7 +270,11 @@
         let rbrace = s.position(regex("[\]}]"))
         assert(rbrace != none, message: "Unterminated } in gloss!")
         let text = s.slice(0, rbrace)
-        parts.push([#if char == "{" { smallcaps(__gloss-apply-replacements(text)) } else { emph(__gloss-apply-replacements(text)) }])
+        parts.push([#if char == "{" {
+            smallcaps(__gloss-apply-replacements(text, false))
+        } else {
+            emph(__gloss-apply-replacements(text, false))
+        }])
         s = s.slice(rbrace + 1)
     }
 
@@ -299,10 +304,10 @@
         let spacing = if spacing-override != none { spacing-override } else { .34em }
         let line-spacing = __gloss_line_spacing.get()
         stack(dir: ttb, spacing: line-spacing,
-            strong(__gloss-apply-replacements(text)),
+            strong(__gloss-apply-replacements(text, true)),
             [#for (t, g) in text_split.zip(gloss) {
                 let parts = ()
-                parts.push[#italic(__gloss-apply-replacements(t))#h(spacing)]
+                parts.push[#italic(__gloss-apply-replacements(t, false))#h(spacing)]
                 if __gloss_ipa_function.get().val != none { parts.push([#(__gloss_ipa_function.get().val)(t)#h(spacing)]) }
                 parts.push[#__gloss-handle-braces-brackets(g) #h(spacing)]
                 box(stack(
@@ -311,7 +316,7 @@
                     ..parts
                 ))
             }],
-            [#lquote#__gloss-apply-replacements(translation)#rquote]
+            [#lquote#__gloss-apply-replacements(translation, true)#rquote]
         )
     }
 
