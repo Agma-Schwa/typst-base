@@ -23,6 +23,7 @@
 #let __compact-chapter-size = 20pt
 #let __chapter-size = 30pt
 #let list-sep = $diamond.stroked.small$
+#let __text-font = "Minion 3"
 
 // These values were calibrated for the current font by checking how many
 // lines LaTeX can fit on a page using the same font and page size and then
@@ -68,7 +69,7 @@
 #let Bar(x) = overline(x, offset: -.8em)
 #let italic = text.with(style: "italic") // emph() that can be toggled off by nesting text(style: "normal")
 #let normal = text.with(style: "normal")
-
+#let mtext = text.with(font: __text-font)
 
 // ============================================================================
 //  State
@@ -222,18 +223,34 @@
 // ============================================================================
 //  Glosses
 // ============================================================================
+// Merge whitespace.
+#let __gloss-merge-ws(x) = x.replace(regex("[ ]+"), " ")
+
+#let __gloss_colours = (
+    rgb("#3242cd"),
+    rgb("#c63939"),
+    rgb("#a72baf"),
+    rgb("#cc7f0a")
+)
+
+#let __gloss_eval_env = (
+    h1: it => text(fill: __gloss_colours.at(0), it),
+    h2: it => text(fill: __gloss_colours.at(1), it),
+    h3: it => text(fill: __gloss_colours.at(2), it),
+    h4: it => text(fill: __gloss_colours.at(3), it),
+)
+
 #let gloss-default-replacements = ("~": " ")
 #let __gloss_replacements = state("gloss-functions", gloss-default-replacements)
 
-// Merge whitespace.
-#let __gloss-merge-ws(x) = x.replace(regex("[ ]+"), " ")
+#let __gloss-eval(t) = eval("[" + t + "]", scope: __gloss_eval_env)
 
 // Apply replacement sequences.
 //
 // We *cannot* call eval() on the input to process markup since some
 // of the formatting used in glosses conflicts with Typst syntax (e.g.
 // infixes, which use '<...>').
-#let __gloss-apply-replacements(s_in, should_eval) = {
+#let __gloss-apply-replacements(s_in) = {
     let s = s_in
     let parts = ()
     while s.len() != 0 {
@@ -241,13 +258,13 @@
             let pos = s.position(val)
             if pos == none { continue }
             let str = s.slice(0, pos)
-            parts.push(if should_eval { eval("[" + str + "]")  } else { str } )
+            parts.push(str)
             s = s.slice(pos + val.len())
             parts.push(repl)
         }
 
         // No more replacements.
-        parts.push(if should_eval { eval("[" + s + "]")  } else { s } )
+        parts.push(s)
         break
     }
 
@@ -259,7 +276,7 @@
     while true {
         let lbrace = s.position(regex("[\[{]"))
         if lbrace == none {
-            parts.push(__gloss-apply-replacements(s, false))
+            parts.push(__gloss-apply-replacements(s))
             break
         }
 
@@ -271,9 +288,9 @@
         assert(rbrace != none, message: "Unterminated } in gloss!")
         let text = s.slice(0, rbrace)
         parts.push([#if char == "{" {
-            smallcaps(__gloss-apply-replacements(text, false))
+            smallcaps(__gloss-apply-replacements(text))
         } else {
-            emph(__gloss-apply-replacements(text, false))
+            emph(__gloss-apply-replacements(text))
         }])
         s = s.slice(rbrace + 1)
     }
@@ -289,34 +306,56 @@
     separator: " ",
     spacing-override: none,
     loc: none,
+    ungrammatical: false,
     x
 ) = {
     let lines = (if type(x) == content { x.text } else { x })
         .split("\n")
         .map(x => x.trim())
-
         .filter(x => x.len() != 0)
 
+    if ungrammatical {
+        if lines.len() != 3 { panic("ungrammatical #gloss expects exactly 3 lines") }
+    } else {
+        if lines.len() != 4 { panic("#gloss expects exactly 4 lines") }
+    }
+
     let (lquote, rquote) = __gloss_quotes.get()
-    let the-gloss = for (text, l2, l3, translation) in lines.chunks(4, exact: true) {
+    let source_text = lines.at(0)
+    let l2 = lines.at(1)
+    let l3 = lines.at(2)
+    let the-gloss = {
         let text_split = __gloss-merge-ws(l2).split(separator)
         let gloss = __gloss-merge-ws(l3).split(separator)
         let spacing = if spacing-override != none { spacing-override } else { .34em }
         let line-spacing = __gloss_line_spacing.get()
         stack(dir: ttb, spacing: line-spacing,
-            strong(__gloss-apply-replacements(text, true)),
+            strong({
+                if ungrammatical [\*]
+                __gloss-eval(source_text)
+            }),
             [#for (t, g) in text_split.zip(gloss) {
                 let parts = ()
-                parts.push[#italic(__gloss-apply-replacements(t, false))#h(spacing)]
+                let colour = 0
+                while t.starts-with("§") {
+                    colour += 1;
+                    t = t.slice("§".len())
+                }
+
+                parts.push[#italic(__gloss-apply-replacements(t))#h(spacing)]
                 if __gloss_ipa_function.get().val != none { parts.push([#(__gloss_ipa_function.get().val)(t)#h(spacing)]) }
                 parts.push[#__gloss-handle-braces-brackets(g) #h(spacing)]
                 box(stack(
                     dir: ttb,
                     spacing: line-spacing,
-                    ..parts
+                    ..parts.map(p => if colour != 0 {
+                        text(fill: __gloss_colours.at(int(colour) - 1), p)
+                    } else {
+                        p
+                    })
                 ))
             }],
-            [#lquote#__gloss-apply-replacements(translation, true)#rquote]
+            if ungrammatical [_(ungrammatical)_] else [#lquote#__gloss-eval(lines.at(3))#rquote]
         )
     }
 
@@ -327,7 +366,7 @@
     }
 }
 
-#let gloss(separator: " ", lbl: none, x, spacing-override: none) = {
+#let gloss(separator: " ", lbl: none, x, spacing-override: none, ungrammatical: false) = {
     context if __gloss-show-numbers.get() {
         counter.step(__gloss-counter)
     }
@@ -342,6 +381,7 @@
                 separator: separator,
                 loc: here(),
                 spacing-override: spacing-override,
+                ungrammatical: ungrammatical,
                 x
             )
         )
@@ -789,7 +829,7 @@
         size: normalfont-size,
         fill: black,
         number-type: "old-style",
-        font: "Minion 3",
+        font: __text-font,
         hyphenate: true
     )
 
