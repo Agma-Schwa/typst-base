@@ -100,9 +100,14 @@
     }
 }
 
-#let mainmatter(content) = {
+#let mainmatter(content) = context {
     // Do this *before* updating the page number.
     cleardoublepage()
+
+    // In compact mode, put the page number in the footer.
+    set page(
+        footer: align(center, context counter(page).display("1"))
+    ) if __compact.get()
 
     // Set up mainmatter formatting.
     __mainmatter.update(true)
