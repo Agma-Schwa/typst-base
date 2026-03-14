@@ -418,7 +418,6 @@
         leading: line-spacing
     )
 
-
     let lines = (if type(x) == content { x.text } else { x })
         .split("\n")
         .map(x => x.trim())
@@ -858,8 +857,8 @@
     set list(indent: 1em, marker: (list-sep,))
     set enum(indent: 1em)
     show enum: set block(spacing: 1em)
-    show enum.where(tight: false): set par(spacing: 1em)
-    show list: set par(spacing: 1em)
+    show enum.where(tight: false): set enum(spacing: 1em)
+    show list: set list(spacing: 1em)
     set table(stroke: none)
     set table.hline(stroke: .5pt)
     set table.vline(stroke: .5pt)
