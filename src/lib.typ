@@ -245,7 +245,7 @@
     h4: it => text(fill: __gloss_colours.at(3), it),
 )
 
-#let gloss-default-replacements = ("~": " ")
+#let gloss-default-replacements = ("~": " ", "---": [---], "--": [--])
 #let __gloss_replacements = state("gloss-functions", gloss-default-replacements)
 
 #let __gloss-eval(t) = eval("[" + t + "]", scope: __gloss_eval_env)
@@ -259,6 +259,7 @@
     let s = s_in
     let parts = ()
     while s.len() != 0 {
+        let replaced = false
         for (val, repl) in __gloss_replacements.get() {
             let pos = s.position(val)
             if pos == none { continue }
@@ -266,11 +267,14 @@
             parts.push(str)
             s = s.slice(pos + val.len())
             parts.push(repl)
+            replaced = true
+            break
         }
 
-        // No more replacements.
-        parts.push(s)
-        break
+        if not replaced {
+            parts.push(s)
+            break
+        }
     }
 
     parts.join()
