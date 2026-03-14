@@ -615,7 +615,7 @@
     text(size: size, rowtable(stroke: stroke, ..content))
 )
 
-#let table-of-contents() = {
+#let table-of-contents(title: auto) = {
     set outline.entry(fill: repeat([.], gap: .44em))
     show outline.entry.where(level: 1): set block(above: 1.5em)
     show outline.entry.where(level: 1): it => link(
@@ -629,8 +629,8 @@
         ])
     )
 
-    cleardoublepage()
-    outline()
+    context if not __compact.get() { cleardoublepage() }
+    outline(title: title)
 }
 
 #let verse(lines, parsep: 2em) = {
