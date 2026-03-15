@@ -239,6 +239,11 @@
     rgb("#cc7f0a")
 )
 
+#let h1(it) = text(fill: __gloss_colours.at(0), it)
+#let h2(it) = text(fill: __gloss_colours.at(1), it)
+#let h3(it) = text(fill: __gloss_colours.at(2), it)
+#let h4(it) = text(fill: __gloss_colours.at(3), it)
+
 #let __gloss_eval_env = (
     h1: it => text(fill: __gloss_colours.at(0), it),
     h2: it => text(fill: __gloss_colours.at(1), it),
