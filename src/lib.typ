@@ -47,6 +47,7 @@
 #let b = strong
 #let llap(x) = box(width: 0pt, [#h(-100cm)#h(1fr)#x])
 #let rlap(x) = box(width: 0pt, [#x#h(1fr)#h(-100cm)])
+#let tlap(x) = box(height: 0pt, {v(1fr);v(-100cm);x})
 #let vline = table.vline()
 #let hline = table.hline()
 #let vlineat(x, ..rest) = table.vline(x: x, ..rest)
@@ -800,41 +801,15 @@
 // ============================================================================
 //  Show and set rules.
 // ============================================================================
-#let setup(
+#let __basic-setup(
     content,
-
-    // [REDACTED] needs to set a custom chapter size.
+    font-size: normalfont-size,
     chapter-size: chapter-size,
-
-    // [REDACTED] uses custom chapter heads,
     custom-chapter-heads: false,
-
-    // Enables compact layout if true:
-    //
-    //   - Do not insert a page break before a chapter.
-    //   - Do not require a chapter to start on an odd page.
-    //
     compact: false,
 ) = {
-    // Page etc.
-    set page(
-        "a4",
-        margin: 2cm,
-        header: format-header(),
-        numbering: "i",
-        footer: none
-    )
-
-    set par(
-        justify: true,
-        linebreaks: "optimized",
-        first-line-indent: par-first-line-indent,
-        spacing: par-spacing,
-        leading: par-leading
-    )
-
     set text(
-        size: normalfont-size,
+        size: font-size,
         fill: black,
         number-type: "old-style",
         font: __text-font,
@@ -845,24 +820,10 @@
         __compact.update(true)
     }
 
-    show heading.where(depth: 1): set par(hanging-indent: 0pt)
-    show heading.where(depth: 1): it => if custom-chapter-heads {
-        it
-    } else {
-        __make-chapter-head(it)
-    }
-
-    show heading.where(depth: 2): it => text(weight: "regular", size: section-size, it) + v(10pt)
-    show heading.where(depth: 3): it => text(weight: "regular", size: subsection-size, it)
-    show heading.where(depth: 4): it => text(weight: "regular", it)
-    show heading.where(depth: 5): it => text(weight: "regular", it)
-
     set strong(delta: 200)
     set list(indent: 1em, marker: (list-sep,))
     set enum(indent: 1em)
-    show enum: set block(spacing: 1em)
     show enum.where(tight: false): set enum(spacing: 1em)
-    show list: set list(spacing: 1em)
     set table(stroke: none)
     set table.hline(stroke: .5pt)
     set table.vline(stroke: .5pt)
@@ -899,6 +860,91 @@
             it
         }
     }
+
+    content
+}
+
+#let setup(
+    content,
+
+    // [REDACTED] needs to set a custom chapter size.
+    chapter-size: chapter-size,
+
+    // [REDACTED] uses custom chapter heads,
+    custom-chapter-heads: false,
+
+    // Enables compact layout if true:
+    //
+    //   - Do not insert a page break before a chapter.
+    //   - Do not require a chapter to start on an odd page.
+    //
+    compact: false,
+) = {
+    show : __basic-setup.with(
+        chapter-size: chapter-size,
+        custom-chapter-heads: custom-chapter-heads,
+        compact: compact,
+    )
+
+    // Page etc.
+    set page(
+        "a4",
+        margin: 2cm,
+        header: format-header(),
+        numbering: "i",
+        footer: none
+    )
+
+    set par(
+        justify: true,
+        linebreaks: "optimized",
+        first-line-indent: par-first-line-indent,
+        spacing: par-spacing,
+        leading: par-leading
+    )
+
+    show heading.where(depth: 1): set par(hanging-indent: 0pt)
+    show heading.where(depth: 1): it => if custom-chapter-heads {
+        it
+    } else {
+        __make-chapter-head(it)
+    }
+
+    show heading.where(depth: 2): it => text(weight: "regular", size: section-size, it) + v(10pt)
+    show heading.where(depth: 3): it => text(weight: "regular", size: subsection-size, it)
+    show heading.where(depth: 4): it => text(weight: "regular", it)
+    show heading.where(depth: 5): it => text(weight: "regular", it)
+
+    show list: set list(spacing: 1em)
+    show enum: set block(spacing: 1em)
+
+    content
+}
+
+#let slides(content) = {
+    show : __basic-setup
+
+    set par(
+        justify: true,
+        linebreaks: "optimized",
+        first-line-indent: 0pt,
+        spacing: .7em,
+        leading: par-leading
+    )
+
+    set page(paper: "presentation-16-9")
+    set text(size: 22pt)
+    show heading.where(level: 2): it => {
+        text(size: 30pt, weight: "regular", it)
+    }
+
+    set table(row-gutter: .2em)
+    set list(indent: 0pt)
+    set enum(indent: 0pt)
+    set enum(spacing: 1em)
+    set list(spacing: 1em)
+    show hide: set list(marker: none)
+    show hide: set enum(numbering: it => none)
 
     content
 }
