@@ -36,11 +36,11 @@
 #let par-spacing = .56em
 #let par-leading = .56em
 
-#let small(x) = text(small-size, [#x])
-#let nf(x) = text(normalfont-size, weight: "regular", style: "normal", [#x])
-#let large(x) = text(large-size, [#x])
-#let Large(x) = text(Large-size, [#x])
-#let huge(x) = text(huge-size, [#x])
+#let small = text.with(size: small-size)
+#let nf = text.with(size: normalfont-size, weight: "regular", style: "normal")
+#let large = text.with(size: large-size)
+#let Large = text.with(size: Large-size)
+#let huge = text.with(size: huge-size)
 #let cell = table.cell
 #let remove-whitespace-before() = h(0pt, weak: true)
 #let s = smallcaps
@@ -63,10 +63,10 @@
 #let join() = [\u{200D}]
 #let hy() = [\u{2011}] // Non-breaking hyphen.
 #let thinsp() = [\u{2009}] // Thin space.
-#let col2(x) = table.cell(colspan: 2)[#x]
-#let col3(x) = table.cell(colspan: 3)[#x]
-#let row2(x) = table.cell(rowspan: 2)[#x]
-#let row3(x) = table.cell(rowspan: 3)[#x]
+#let col2 = table.cell.with(colspan: 2)
+#let col3 = table.cell.with(colspan: 3)
+#let row2 = table.cell.with(rowspan: 2)
+#let row3 = table.cell.with(rowspan: 3)
 #let Bar(x) = overline(x, offset: -.8em)
 #let italic = text.with(style: "italic") // emph() that can be toggled off by nesting text(style: "normal")
 #let normal = text.with(style: "normal")
@@ -552,6 +552,7 @@
         let format-int-ranges(ints) = {
             let format-range(start, end) = {
                 if start == end [#start]
+                else if end == start + 1 [#start, #end]
                 else [#start–#end]
             }
 
