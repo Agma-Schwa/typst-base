@@ -261,6 +261,10 @@
 // We *cannot* call eval() on the input to process markup since some
 // of the formatting used in glosses conflicts with Typst syntax (e.g.
 // infixes, which use '<...>').
+//
+// FIXME: Actually, either do that anyway OR BETTER: figure out some way
+// to not require wrapping everything in a string or `` (maybe patch Typst
+// to allow setting linebreak behaviour?).
 #let __gloss-apply-replacements(s_in) = {
     let s = s_in
     let parts = ()
@@ -317,11 +321,12 @@
     __gloss_replacements.update(dict)
 }
 
-#let gloss_impl(
+#let __gloss_impl(
     separator: " ",
     spacing-override: none,
     loc: none,
     ungrammatical: false,
+    quotes: auto,
     x
 ) = {
     let lines = (if type(x) == content { x.text } else { x })
@@ -335,7 +340,14 @@
         if lines.len() != 4 { panic("#gloss expects exactly 4 lines") }
     }
 
-    let (lquote, rquote) = __gloss_quotes.get()
+    let (lquote, rquote) = if quotes == auto {
+        __gloss_quotes.get()
+    } else if quotes == none {
+        ("", "")
+    } else {
+        quotes
+    }
+
     let source_text = lines.at(0)
     let l2 = lines.at(1)
     let l3 = lines.at(2)
@@ -381,7 +393,14 @@
     }
 }
 
-#let gloss(separator: " ", lbl: none, x, spacing-override: none, ungrammatical: false) = {
+#let gloss(
+    separator: " ",
+    lbl: none,
+    spacing-override: none,
+    quotes: auto,
+    ungrammatical: false,
+    x
+) = {
     context if __gloss-show-numbers.get() {
         counter.step(__gloss-counter)
     }
@@ -392,11 +411,12 @@
         let f = figure(
             kind: "gloss",
             supplement: none,
-            gloss_impl(
+            __gloss_impl(
                 separator: separator,
                 loc: here(),
                 spacing-override: spacing-override,
                 ungrammatical: ungrammatical,
+                quotes: quotes,
                 x
             )
         )
@@ -574,7 +594,7 @@
 
         let format-tree(tree, level) = {
             set list(marker: none, body-indent: 0pt, indent: 2em * level)
-            for (k, v) in tree {
+            for (k, v) in tree.pairs().sorted(key: it => lower(it.at(0))) {
                 let pages = v.remove(pages_key)
                 list.item([
                     #k
@@ -842,6 +862,7 @@
         move(dx: -.2em, enum(
             numbering: it => llap(link(super([#it]))),
             body-indent: .2em,
+            indent: 0pt,
             enum.item(val)[#it.note.body]
         ))
     }
