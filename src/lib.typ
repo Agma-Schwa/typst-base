@@ -668,6 +668,11 @@
     block(align(left, lines))
 }
 
+// ============================================================================
+//  Dictionary
+// ============================================================================
+#let __dictgen_plugin_template__ = plugin("dictgen.wasm")
+
 // Show the first and last word of each page.
 // Disabled in draft mode because it is *very* slow (takes ~4 seconds for 3000); only enable
 // this when building the final document for printing!!!
@@ -686,14 +691,14 @@
     content
 }
 
-#let render-dictionary-node(
+#let __render-dictionary-node(
     node,
     custom-macro-handler: (it, render-callback) => panic("Unknown macro: " + it.name),
     current-word : "<no current word>",
     lemma-format: it => text(weight: "semibold", it),
 ) = {
     let render-all(nodes) = {
-        nodes.map(it => render-dictionary-node(
+        nodes.map(it => __render-dictionary-node(
             it,
             custom-macro-handler: custom-macro-handler,
             current-word: current-word,
@@ -719,7 +724,7 @@
         else if node.macro.name == "subscript" { sub(render-all(node.macro.args)) }
         else if node.macro.name == "superscript" { super(render-all(node.macro.args)) }
         else if node.macro.name == "soft_hyphen" [-?]
-        else if node.macro.name == "this" { lemma-format(render-dictionary-node(current-word)) }
+        else if node.macro.name == "this" { lemma-format(__render-dictionary-node(current-word)) }
         else if node.macro.name == "reference" {
             assert(node.macro.args.len() == 1, message: "\\ref has exactly 1 argument")
             assert("text" in node.macro.args.at(0), message: "Argument of \\ref must be a text node")
@@ -730,7 +735,7 @@
     } else if "custom_macro" in node {
         custom-macro-handler(
             node.custom_macro,
-            it => render-dictionary-node(
+            it => __render-dictionary-node(
                 it,
                 custom-macro-handler: custom-macro-handler,
                 current-word: current-word,
@@ -743,7 +748,7 @@
 }
 
 #let __typeset-entry(entry, lemma-format, custom-macro-handler) = {
-    let render(node) = render-dictionary-node(
+    let render(node) = __render-dictionary-node(
         node,
         custom-macro-handler: custom-macro-handler,
         current-word: entry.word,
@@ -800,28 +805,57 @@
     ] }
 }
 
-/// Generate a dictionary using a dictionary file and generator plugin.
-///
-/// Example:
-/// ```typst
-/// #dictionary(
-///     read("my_language.dict.txt"),
-///     plugin("plugin/target/wasm32-unknown-unknown/release/plugin.wasm"),
-///     it => text(weight: "semibold", it)
-/// )
-/// ```
-#let dictionary(
-    dictionary-contents,
-    dictionary-plugin,
+#let __typeset_dictionary(
+    dictionary-obj,
     lemma-format: it => text(weight: "semibold", it),
     custom-macro-handler: (it, render-callback) => panic("Unknown macro: " + it.name)
 ) = {
-    let dictionary-obj = json(dictionary-plugin.generate_dictionary(bytes(dictionary-contents)))
     pagebreak()
     set page(columns: 2)
     set columns(gutter: 1em)
     show : __dictionary-mark
     dictionary-obj.entries.map(it => __typeset-entry(it, lemma-format, custom-macro-handler)).join()
+}
+
+/// Load a dictionary file and create a plugin that can typeset
+/// that dictionary or use the rules defined therein to convert
+/// text to IPA.
+///
+/// This returns an object with the following functions:
+///
+/// ```
+///   to-ipa(s: str) => content
+///   typeset-dictionary() => content
+/// ```
+#let instantiate-dictionary-plugin(
+    // The dictionary file contents.
+    dictionary-contents,
+    // Whether to always include IPA in the output.
+    always_include_ipa: false,
+    // Handler for custom macros.
+    custom-macro-handler: (it, render-callback) => panic("Unknown macro: " + it.name),
+    // How to format lemmas.
+    lemma-format: it => text(weight: "semibold", it),
+) = {
+    let instance = plugin.transition(
+        __dictgen_plugin_template__.wasm_parse_dictionary_file,
+        bytes((if always_include_ipa { 1 } else { 0 },)),
+        bytes(dictionary-contents)
+    )
+
+    (
+        to-ipa: s => __render-dictionary-node(
+            json(instance.wasm_to_ipa(bytes(if type(s) == str { s } else { s.text }))),
+            custom-macro-handler: custom-macro-handler,
+            lemma-format: lemma-format,
+        ),
+
+        typeset-dictionary: () => __typeset_dictionary(
+            json(instance.wasm_generate_dictionary()),
+            custom-macro-handler: custom-macro-handler,
+            lemma-format: lemma-format,
+        )
+    )
 }
 
 // ============================================================================
